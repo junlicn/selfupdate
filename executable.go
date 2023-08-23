@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/fynelabs/selfupdate/internal/osext"
+	"github.com/junlicn/selfupdate/internal/osext"
 )
 
 func lastModifiedExecutable() (time.Time, error) {

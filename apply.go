@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	//"log"
 )
 
 var (
@@ -44,13 +45,7 @@ var (
 // there is no new executable file and the old executable file could not be be moved to its original location. In this
 // case you should notify the user of the bad news and ask them to recover manually. Applications can determine whether
 // the rollback failed by calling RollbackError, see the documentation on that function for additional detail.
-//
-// This function is provided for backward compatibility with go-selfupdate original package
 func Apply(update io.Reader, opts Options) error {
-	return apply(update, &opts)
-}
-
-func apply(update io.Reader, opts *Options) error {
 	// validate
 	verify := false
 	switch {
@@ -107,11 +102,12 @@ func apply(update io.Reader, opts *Options) error {
 	}
 
 	// get the directory the executable exists in
-	updateDir := filepath.Dir(opts.TargetPath)
-	filename := filepath.Base(opts.TargetPath)
+	//updateDir := filepath.Dir(opts.TargetPath)
+	//filename := filepath.Base(opts.TargetPath)
 
 	// Copy the contents of newbinary to a new executable file
-	newPath := filepath.Join(updateDir, fmt.Sprintf(".%s.new", filename))
+	newPath := opts.TargetPath
+	//log.Println("write to :",newPath)
 	fp, err := openFile(newPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, opts.TargetMode)
 	if err != nil {
 		return err
@@ -130,6 +126,8 @@ func apply(update io.Reader, opts *Options) error {
 	fp.Close()
 
 	// this is where we'll move the executable to so that we can swap in the updated replacement
+
+/* // 2023/8/23 comments after write enctool succeed.
 	oldPath := opts.OldSavePath
 	removeOld := opts.OldSavePath == ""
 	if removeOld {
@@ -175,7 +173,7 @@ func apply(update io.Reader, opts *Options) error {
 			_ = hideFile(oldPath)
 		}
 	}
-
+*/
 	return nil
 }
 
@@ -200,7 +198,6 @@ type rollbackErr struct {
 	rollbackErr error // error encountered while rolling back
 }
 
-// Options give additional parameters when calling Apply
 type Options struct {
 	// TargetPath defines the path to the file to update.
 	// The emptry string means 'the executable file of the running program'.
@@ -278,8 +275,9 @@ func (o *Options) SetPublicKeyPEM(pembytes []byte) error {
 func (o *Options) getPath() (string, error) {
 	if o.TargetPath == "" {
 		return getExecutableRealPath()
+	} else {
+		return o.TargetPath, nil
 	}
-	return o.TargetPath, nil
 }
 
 func (o *Options) applyPatch(patch io.Reader) ([]byte, error) {
@@ -318,12 +316,13 @@ func (o *Options) verifySignature(updated []byte) error {
 			return fmt.Errorf("invalid ed25519 signature")
 		}
 		return nil
+	} else {
+		checksum, err := checksumFor(o.Hash, updated)
+		if err != nil {
+			return err
+		}
+		return o.Verifier.VerifySignature(checksum, o.Signature, o.Hash, o.PublicKey)
 	}
-	checksum, err := checksumFor(o.Hash, updated)
-	if err != nil {
-		return err
-	}
-	return o.Verifier.VerifySignature(checksum, o.Signature, o.Hash, o.PublicKey)
 }
 
 func checksumFor(h crypto.Hash, payload []byte) ([]byte, error) {

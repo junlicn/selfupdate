@@ -1,4 +1,4 @@
-module github.com/fynelabs/selfupdate
+module github.com/junlicn/selfupdate
 
 go 1.18
 
